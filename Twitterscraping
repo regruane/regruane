@@ -1,0 +1,85 @@
+!pip install getOldTweets3
+# # !pip3 install --user --upgrade git+https://github.com/twintproject/twint.git@origin/master#egg=twint
+# !bash
+Collecting getOldTweets3
+  Downloading https://files.pythonhosted.org/packages/ed/f4/a00c2a7c90801abc875325bb5416ce9090ac86d06a00cc887131bd73ba45/GetOldTweets3-0.0.11-py3-none-any.whl
+Collecting pyquery>=1.2.10
+  Downloading https://files.pythonhosted.org/packages/58/0b/85d15e21f660a8ea68b1e0286168938857391f4ec9f6d204d91c9e013826/pyquery-1.4.3-py3-none-any.whl
+Requirement already satisfied: lxml>=3.5.0 in /usr/local/lib/python3.6/dist-packages (from getOldTweets3) (4.2.6)
+Collecting cssselect>0.7.9
+  Downloading https://files.pythonhosted.org/packages/3b/d4/3b5c17f00cce85b9a1e6f91096e1cc8e8ede2e1be8e96b87ce1ed09e92c5/cssselect-1.1.0-py2.py3-none-any.whl
+Installing collected packages: cssselect, pyquery, getOldTweets3
+Successfully installed cssselect-1.1.0 getOldTweets3-0.0.11 pyquery-1.4.3
+import pandas as pd
+import numpy as np
+import GetOldTweets3 as got
+import regex as re
+import time
+# import twint
+import nest_asyncio
+def get_tweet_info(username, setSinceDate):
+    # establish twitter search criteria
+    tweet_criteria = got.manager.TweetCriteria().setUsername(username).setSince(setSinceDate)
+    # get tweets and save Tweet Objects in a list
+    tweet_list = got.manager.\
+                     TweetManager.\
+                     getTweets(tweetCriteria=tweet_criteria)
+    # initialize empty lists to append to                     
+    username_list = []
+    hashtag_list = []
+    date_list = []
+    to_list = []
+    mentions_list = []
+    text_list = []
+    # for each tweet, find relevant information
+    for tweet in tweet_list:
+        # username
+        username_list.append(tweet.username)
+        # hashtag
+        hashtag_list.append(tweet.hashtags)
+        # date/time posted
+        date_list.append(tweet.formatted_date)
+        # who tweet was sent to
+        to_list.append(tweet.to)
+        # who tweet mentions
+        mentions_list.append(tweet.mentions)
+        # what tweet says
+        text_list.append(tweet.text)
+    # create dataframe
+    dataframe = {
+        'date' : date_list,
+        'username' : username_list,
+        'to' : to_list,
+        'mentions' : mentions_list,
+        'hashtags' : hashtag_list,
+        'text' : text_list
+    }
+    # return dataframe
+    return pd.DataFrame(dataframe)
+# keep only characters after @ and before space
+def find_at(text):
+    if text[0] == '@':
+        return text[1:]
+    else:
+        return None
+# read in twitter tax experts list
+usernames = pd.read_csv('/content/drive/My Drive/data_science_institute/vertex_tax/raw_data/twitter_tax_handles_updated.csv')
+# get only @... from column with handles
+usernames['handle_only'] = usernames['handle'].str.strip('@').str.lower().values
+# remove duplicate handles
+usernames = usernames.loc[usernames['handle_only'].drop_duplicates().index]
+# initialize usernames/handles to be searching
+username_list = usernames['handle_only'].values
+for username in username_list:
+    try:
+        nest_asyncio.apply()
+        c = twint.Config()
+        c.Username = username
+        c.Since = '2020-01-01'
+        c.Retweets = True
+        c.Profile_full = True
+        c.Store_csv = True
+        c.Output = '/content/drive/MyDrive/data_science_institute/vertex_tax/raw_data/new_raw_data.csv'
+        twint.run.Profile(c)
+    except:
+        continue
